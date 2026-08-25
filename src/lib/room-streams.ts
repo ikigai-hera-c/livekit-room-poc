@@ -9,15 +9,15 @@ export const roomStreams: Record<string, RoomStream[]> = {
   'QA-BAC-01': [
     {
       id: 'left-stream',
-      title: 'Left Stream',
+      title: 'GPC View',
       type: 'iframe',
-      url: 'https://192.168.20.23:8443/live/qa01_gpc?muted=true&autoplay=true',
+      url: 'https://192.168.20.23:8443/live/qa01_gpc/?muted=true&autoplay=true',
     },
     {
       id: 'right-stream',
-      title: 'Right Stream',
-      type: 'flv',
-      url: 'https://livepull-ws.iki-utl.cc/live/qa01hd.flv',
+      title: 'Dealer View',
+      type: 'iframe',
+      url: 'https://192.168.20.23:8443/live/ZCam_16/?muted=true&autoplay=true',
     },
   ],
 }
