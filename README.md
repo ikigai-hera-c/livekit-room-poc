@@ -53,11 +53,11 @@ Participants in the same room
 
 ## Network Topology
 
-| Host | Services |
-| --- | --- |
-| `192.168.20.22` | MediaMTX and GPC/Dealer video streams |
-| `192.168.20.23` | LiveKit Server and Caddy reverse proxy |
-| `192.168.20.246` | Next.js frontend and token API |
+| Host             | Services                               |
+| ---------------- | -------------------------------------- |
+| `192.168.20.22`  | MediaMTX and GPC/Dealer video streams  |
+| `192.168.20.23`  | LiveKit Server and Caddy reverse proxy |
+| `192.168.20.246` | Next.js frontend and token API         |
 
 The IP addresses above belong to the current internal POC environment. Update
 them when deploying to another network.
@@ -87,9 +87,9 @@ src/lib/room-streams.ts
 
 The current streams are:
 
-| View | Source |
-| --- | --- |
-| GPC View | MediaMTX WebRTC player |
+| View        | Source                 |
+| ----------- | ---------------------- |
+| GPC View    | MediaMTX WebRTC player |
 | Dealer View | MediaMTX WebRTC player |
 
 Current stream URLs:
@@ -124,10 +124,10 @@ MediaMTX currently runs on:
 
 Required ports:
 
-| Port | Purpose |
-| --- | --- |
-| `8554` | RTSP |
-| `8888` | HLS |
+| Port   | Purpose     |
+| ------ | ----------- |
+| `8554` | RTSP        |
+| `8888` | HLS         |
 | `8889` | WebRTC/WHEP |
 
 Verify the GPC stream:
@@ -158,11 +158,11 @@ LiveKit currently runs on:
 
 The current POC uses the following LiveKit ports:
 
-| Port | Protocol | Purpose |
-| --- | --- | --- |
-| `7880` | TCP | Signaling and API |
-| `7881` | TCP | RTC over TCP |
-| `7882` | UDP | RTC media |
+| Port   | Protocol | Purpose           |
+| ------ | -------- | ----------------- |
+| `7880` | TCP      | Signaling and API |
+| `7881` | TCP      | RTC over TCP      |
+| `7882` | UDP      | RTC media         |
 
 SSH to the LiveKit host:
 
