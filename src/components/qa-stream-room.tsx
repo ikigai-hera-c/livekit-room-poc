@@ -1,6 +1,10 @@
 'use client'
 
+import { useState } from 'react'
+import type { WidgetState } from '@livekit/components-core'
 import {
+  Chat,
+  ChatToggle,
   DisconnectButton,
   LayoutContextProvider,
   RoomAudioRenderer,
@@ -18,25 +22,38 @@ type QAStreamRoomProps = {
 export function QAStreamRoom({ roomName }: QAStreamRoomProps) {
   const streams = roomStreams[roomName] ?? []
 
+  const [widgetState, setWidgetState] = useState<WidgetState>({
+    showChat: false,
+    unreadMessages: 0,
+  })
+
   return (
-    <LayoutContextProvider>
-      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] bg-[#07090e]">
-        <div className="grid min-h-0 gap-4 overflow-auto p-4 lg:grid-cols-2">
-          {streams.map((stream) => (
-            <StreamWindow
-              key={stream.id}
-              title={stream.title}
-              type={stream.type}
-              url={stream.url}
-            />
-          ))}
+    <LayoutContextProvider onWidgetChange={setWidgetState}>
+      <div className="flex min-h-0 flex-1 bg-[#07090e]">
+        <div className="grid min-w-0 flex-1 grid-rows-[minmax(0,1fr)_auto]">
+          <div className="grid min-h-0 gap-4 overflow-auto p-4 lg:grid-cols-2">
+            {streams.map((stream) => (
+              <StreamWindow
+                key={stream.id}
+                title={stream.title}
+                type={stream.type}
+                url={stream.url}
+              />
+            ))}
+          </div>
+
+          <div className="lk-control-bar">
+            <TrackToggle source={Track.Source.Microphone}>
+              Talk
+            </TrackToggle>
+
+            <ChatToggle>Chat</ChatToggle>
+
+            <DisconnectButton>Leave</DisconnectButton>
+          </div>
         </div>
 
-        <div className="lk-control-bar">
-          <TrackToggle source={Track.Source.Microphone}>Talk</TrackToggle>
-
-          <DisconnectButton>Leave</DisconnectButton>
-        </div>
+        {widgetState.showChat && <Chat />}
 
         <RoomAudioRenderer />
       </div>
