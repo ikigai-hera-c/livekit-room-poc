@@ -6,6 +6,7 @@ import {
   RoomAudioRenderer,
   useIsSpeaking,
   useRoomContext,
+  useSpeakingParticipants,
 } from '@livekit/components-react'
 import { RoomEvent } from 'livekit-client'
 import type { RemoteParticipant } from 'livekit-client'
@@ -54,6 +55,12 @@ function ManagerRoomCard({
   const room = useRoomContext()
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null)
   const operatorCalling = activeCall !== null
+  const speakingParticipants = useSpeakingParticipants()
+  const isOperatorSpeaking =
+    activeCall !== null &&
+    speakingParticipants.some(
+      (participant) => participant.identity === activeCall.operatorIdentity,
+    )
   const shouldPublishMicrophone = operatorCalling || microphoneEnabled
   const isLocalParticipantSpeaking = useIsSpeaking(room.localParticipant)
   const isOpmSpeaking = shouldPublishMicrophone && isLocalParticipantSpeaking
@@ -145,28 +152,43 @@ function ManagerRoomCard({
     <article
       aria-label={`${roomName}${isOpmSpeaking ? ', OPM is speaking' : ''}`}
       className={
-        isOpmSpeaking
-          ? 'relative rounded-2xl border border-emerald-300 bg-emerald-500/15 p-5 shadow-[0_0_0_3px_rgba(52,211,153,0.2),0_0_28px_rgba(52,211,153,0.35)] transition duration-200'
-          : operatorCalling
-            ? 'rounded-2xl border border-red-400 bg-red-500/10 p-5'
-            : selected
-              ? 'rounded-2xl border border-violet-400 bg-violet-500/10 p-5'
-              : 'rounded-2xl border border-white/10 bg-white/5 p-5'
+        isOperatorSpeaking
+          ? 'relative rounded-2xl border border-[#DC95FF] bg-[#DC95FF]/10 p-5 shadow-[0_0_0_3px_rgba(220,149,255,0.2),0_0_28px_rgba(220,149,255,0.45)] transition duration-200'
+          : isOpmSpeaking
+            ? 'relative rounded-2xl border border-emerald-300 bg-emerald-500/15 p-5 shadow-[0_0_0_3px_rgba(52,211,153,0.2),0_0_28px_rgba(52,211,153,0.35)] transition duration-200'
+            : operatorCalling
+              ? 'relative rounded-2xl border border-red-400 bg-red-500/10 p-5 transition duration-200'
+              : selected
+                ? 'relative rounded-2xl border border-violet-400 bg-violet-500/10 p-5 transition duration-200'
+                : 'relative rounded-2xl border border-white/10 bg-white/5 p-5 transition duration-200'
       }
     >
       <RoomAudioRenderer />
 
-      {isOpmSpeaking ? (
+      {isOpmSpeaking || isOperatorSpeaking ? (
         <div
-          className="absolute right-4 top-4 flex items-center gap-2 rounded-full bg-emerald-400 px-3 py-1 text-xs font-semibold text-emerald-950 shadow-lg shadow-emerald-950/30"
-          role="status"
+          className="absolute right-4 top-4 z-10 flex flex-col items-end gap-2"
           aria-live="polite"
         >
-          <span className="relative flex size-2" aria-hidden="true">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-900 opacity-50" />
-            <span className="relative inline-flex size-2 rounded-full bg-emerald-950" />
-          </span>
-          OPM speaking
+          {isOpmSpeaking ? (
+            <div
+              className="flex items-center gap-2 rounded-full bg-emerald-400 px-3 py-1 text-xs font-semibold text-emerald-950 shadow-lg shadow-emerald-950/30"
+              role="status"
+            >
+              <SpeakingDot color="emerald" />
+              OPM speaking
+            </div>
+          ) : null}
+
+          {isOperatorSpeaking ? (
+            <div
+              className="flex items-center gap-2 rounded-full bg-[#DC95FF] px-3 py-1 text-xs font-semibold text-[#27102F] shadow-[0_0_18px_rgba(220,149,255,0.45)]"
+              role="status"
+            >
+              <SpeakingDot color="operator" />
+              Operator speaking
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -177,13 +199,17 @@ function ManagerRoomCard({
       </label>
 
       <p className="mt-3 text-sm text-zinc-400">
-        {isOpmSpeaking
-          ? 'OPM is speaking to this room'
-          : operatorCalling
-            ? 'Two-way Talkback active — your microphone is live'
-            : microphoneEnabled
-              ? 'Announcement active'
-              : 'Connected'}
+        {isOperatorSpeaking && isOpmSpeaking
+          ? 'Operator and OPM are speaking'
+          : isOperatorSpeaking
+            ? 'Operator is speaking'
+            : isOpmSpeaking
+              ? 'OPM is speaking to this room'
+              : operatorCalling
+                ? 'Two-way Talkback active'
+                : microphoneEnabled
+                  ? 'Announcement active'
+                  : 'Connected'}
       </p>
 
       <RoomStreamGrid roomName={roomName} />
@@ -198,5 +224,26 @@ function ManagerRoomCard({
         </button>
       ) : null}
     </article>
+  )
+}
+
+type SpeakingDotProps = {
+  color: 'emerald' | 'operator'
+}
+
+function SpeakingDot({ color }: SpeakingDotProps) {
+  const pulseColor = color === 'operator' ? 'bg-[#6B287F]' : 'bg-emerald-900'
+  const dotColor = color === 'operator' ? 'bg-[#4B175B]' : 'bg-emerald-950'
+
+  return (
+    <span className="relative flex size-2" aria-hidden="true">
+      <span
+        className={`absolute inline-flex size-full animate-ping rounded-full opacity-50 ${pulseColor}`}
+      />
+
+      <span
+        className={`relative inline-flex size-2 rounded-full ${dotColor}`}
+      />
+    </span>
   )
 }
