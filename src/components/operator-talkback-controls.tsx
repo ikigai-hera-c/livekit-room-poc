@@ -1,7 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { RoomAudioRenderer, useRoomContext } from '@livekit/components-react'
+import {
+  RoomAudioRenderer,
+  useIsSpeaking,
+  useRoomContext,
+  useSpeakingParticipants,
+} from '@livekit/components-react'
+import type { Participant } from 'livekit-client'
 import { RoomEvent } from 'livekit-client'
 import {
   decodeTalkbackMessage,
@@ -14,6 +20,18 @@ type OperatorTalkbackControlsProps = {
   compact?: boolean
 }
 
+function isOperatorManager(participant: Participant): boolean {
+  try {
+    const metadata = JSON.parse(participant.metadata ?? '{}') as {
+      role?: unknown
+    }
+
+    return metadata.role === 'operator_manager'
+  } catch {
+    return false
+  }
+}
+
 export function OperatorTalkbackControls({
   roomName,
   compact = false,
@@ -24,6 +42,11 @@ export function OperatorTalkbackControls({
   const [isTalking, setIsTalking] = useState(false)
   const [isChanging, setIsChanging] = useState(false)
   const [error, setError] = useState('')
+
+  const isLocalParticipantSpeaking = useIsSpeaking(room.localParticipant)
+  const isOperatorSpeaking = isTalking && isLocalParticipantSpeaking
+  const speakingParticipants = useSpeakingParticipants()
+  const isOpmSpeaking = speakingParticipants.some(isOperatorManager)
 
   useEffect(() => {
     function handleData(
@@ -179,16 +202,68 @@ export function OperatorTalkbackControls({
   if (compact) {
     return (
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          disabled={isChanging}
-          onClick={isTalking ? endTalkback : startTalkback}
-          className={
-            isTalking ? 'lk-button bg-red-600! text-white!' : 'lk-button'
-          }
-        >
-          {isChanging ? 'Please wait...' : isTalking ? 'End Talk' : 'Call OPM'}
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            disabled={isChanging}
+            onClick={isTalking ? endTalkback : startTalkback}
+            aria-label={
+              isOperatorSpeaking
+                ? 'End Talk. Operator is speaking.'
+                : isTalking
+                  ? 'End Talk'
+                  : 'Call OPM'
+            }
+            className={
+              isOperatorSpeaking
+                ? 'lk-button border! border-[#DC95FF]! bg-[#DC95FF]/20! text-[#F2D9FF]! shadow-[0_0_0_3px_rgba(220,149,255,0.2),0_0_24px_rgba(220,149,255,0.55)]!'
+                : isTalking
+                  ? 'lk-button bg-red-600! text-white!'
+                  : 'lk-button'
+            }
+          >
+            {isChanging
+              ? 'Please wait...'
+              : isTalking
+                ? 'End Talk'
+                : 'Call OPM'}
+          </button>
+
+          {isOperatorSpeaking ? (
+            <span
+              className="absolute -right-2 -top-2 flex size-4"
+              aria-hidden="true"
+            >
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#DC95FF] opacity-60" />
+
+              <span className="relative inline-flex size-4 rounded-full bg-[#DC95FF] shadow-[0_0_12px_rgba(220,149,255,0.9)]" />
+            </span>
+          ) : null}
+        </div>
+
+        {isOperatorSpeaking ? (
+          <span
+            className="rounded-full bg-[#DC95FF] px-3 py-1 text-xs font-semibold text-[#27102F]"
+            role="status"
+            aria-live="polite"
+          >
+            Operator speaking
+          </span>
+        ) : null}
+
+        {isOpmSpeaking ? (
+          <span
+            className="flex items-center gap-2 rounded-full bg-emerald-400 px-3 py-1 text-xs font-semibold text-emerald-950 shadow-[0_0_18px_rgba(52,211,153,0.45)]"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="relative flex size-2.5" aria-hidden="true">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-700 opacity-60" />
+              <span className="relative inline-flex size-2.5 rounded-full bg-emerald-900" />
+            </span>
+            OPM speaking
+          </span>
+        ) : null}
 
         {error ? (
           <span className="text-sm text-red-400" role="alert">
@@ -209,6 +284,20 @@ export function OperatorTalkbackControls({
         <h1 className="mt-2 text-2xl font-semibold">
           {isTalking ? 'Connected to OPM' : 'Talkback ready'}
         </h1>
+
+        {isOpmSpeaking ? (
+          <div
+            className="mx-auto mt-4 flex w-fit items-center gap-2 rounded-full bg-emerald-400 px-3 py-1 text-xs font-semibold text-emerald-950 shadow-[0_0_18px_rgba(52,211,153,0.45)]"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="relative flex size-2.5" aria-hidden="true">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-700 opacity-60" />
+              <span className="relative inline-flex size-2.5 rounded-full bg-emerald-900" />
+            </span>
+            OPM speaking
+          </div>
+        ) : null}
 
         <p className="mt-3 text-sm text-zinc-400">
           {isTalking
