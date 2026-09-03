@@ -1,22 +1,22 @@
 export const rooms = [
   {
-    name: 'ARO-001',
-    description: 'ARO 001',
+    name: 'BAC-01',
+    description: 'BAC 01',
     status: 'available',
   },
   {
-    name: 'ARO-002',
-    description: 'ARO 002',
+    name: 'BAC-02',
+    description: 'BAC 02',
     status: 'available',
   },
   {
-    name: 'SBO-001',
-    description: 'SBO 001',
+    name: 'BAC-03',
+    description: 'BAC 03',
     status: 'available',
   },
   {
-    name: 'QA-BAC-01',
-    description: 'QA BAC 01',
+    name: 'BAC-04',
+    description: 'BAC 04',
     status: 'available',
   },
 ] as const

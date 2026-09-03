@@ -1,3 +1,5 @@
+import type { RoomName } from '@/lib/rooms'
+
 export type RoomStream = {
   id: string
   title: string
@@ -5,19 +7,29 @@ export type RoomStream = {
   url: string
 }
 
-export const roomStreams: Record<string, RoomStream[]> = {
-  'QA-BAC-01': [
+function createRoomStreams(gpcUrl = '', dealerUrl = ''): RoomStream[] {
+  return [
     {
-      id: 'left-stream',
+      id: 'gpc-stream',
       title: 'GPC View',
       type: 'iframe',
-      url: 'https://192.168.20.23:8443/live/qa01_gpc/?muted=true&autoplay=true',
+      url: gpcUrl,
     },
     {
-      id: 'right-stream',
+      id: 'dealer-stream',
       title: 'Dealer View',
       type: 'iframe',
-      url: 'https://192.168.20.23:8443/live/ZCam_16/?muted=true&autoplay=true',
+      url: dealerUrl,
     },
-  ],
+  ]
+}
+
+export const roomStreams: Record<RoomName, RoomStream[]> = {
+  'BAC-01': createRoomStreams(),
+  'BAC-02': createRoomStreams(),
+  'BAC-03': createRoomStreams(),
+  'BAC-04': createRoomStreams(
+    'https://192.168.20.23:8443/live/qa01_gpc/?muted=true&autoplay=true',
+    'https://192.168.20.23:8443/live/ZCam_16/?muted=true&autoplay=true',
+  ),
 }
