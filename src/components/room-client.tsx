@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AudioConference, LiveKitRoom } from '@livekit/components-react'
-import { QAStreamRoom } from '@/components/qa-stream-room'
+import { LiveKitRoom } from '@livekit/components-react'
+import { OperatorRoom } from '@/components/operator-room'
+import type { RoomName } from '@/lib/rooms'
 
 type RoomClientProps = {
-  roomName: string
+  roomName: RoomName
   participantName: string
 }
 
@@ -42,6 +43,7 @@ export function RoomClient({ roomName, participantName }: RoomClientProps) {
           body: JSON.stringify({
             roomName,
             participantName,
+            role: 'operator',
           }),
           signal: controller.signal,
         })
@@ -137,15 +139,11 @@ export function RoomClient({ roomName, participantName }: RoomClientProps) {
         serverUrl={connectionDetails.serverUrl}
         token={connectionDetails.token}
         connect
-        audio
+        audio={false}
         video={false}
         onDisconnected={returnHome}
       >
-        {roomName === 'QA-BAC-01' ? (
-          <QAStreamRoom roomName={roomName} />
-        ) : (
-          <AudioConference />
-        )}
+        <OperatorRoom roomName={roomName} />
       </LiveKitRoom>
     </main>
   )

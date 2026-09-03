@@ -2,10 +2,13 @@ import { randomUUID } from 'node:crypto'
 import { AccessToken } from 'livekit-server-sdk'
 import { NextResponse } from 'next/server'
 import { isAllowedRoom } from '@/lib/rooms'
+import { isParticipantRole, type ParticipantRole } from '@/lib/talkback'
 
 type TokenRequestBody = {
   roomName?: unknown
   participantName?: unknown
+  role?: unknown
+  managerId?: unknown
 }
 
 export async function POST(request: Request) {
@@ -49,6 +52,26 @@ export async function POST(request: Request) {
     )
   }
 
+  if (!isParticipantRole(body.role)) {
+    return NextResponse.json(
+      { error: 'Participant role is invalid' },
+      { status: 400 },
+    )
+  }
+
+  const role: ParticipantRole = body.role
+  const managerId =
+    role === 'operator_manager' && typeof body.managerId === 'string'
+      ? body.managerId.trim()
+      : null
+
+  if (role === 'operator_manager' && !managerId) {
+    return NextResponse.json(
+      { error: 'Manager ID is required' },
+      { status: 400 },
+    )
+  }
+
   const apiKey = process.env.LIVEKIT_API_KEY
   const apiSecret = process.env.LIVEKIT_API_SECRET
   const serverUrl = process.env.LIVEKIT_URL
@@ -68,11 +91,20 @@ export async function POST(request: Request) {
 
   try {
     const participantName = body.participantName.trim()
-    const participantIdentity = `participant-${randomUUID()}`
+
+    const participantIdentity =
+      role === 'operator_manager' ? managerId! : `operator-${randomUUID()}`
+
+    const metadata = JSON.stringify({
+      role,
+      managerId: role === 'operator_manager' ? participantIdentity : 'OPM-01',
+      operatorRoomId: role === 'operator' ? body.roomName : undefined,
+    })
 
     const accessToken = new AccessToken(apiKey, apiSecret, {
       identity: participantIdentity,
       name: participantName,
+      metadata,
       ttl: '10m',
     })
 
