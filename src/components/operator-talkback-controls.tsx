@@ -40,11 +40,13 @@ export function OperatorTalkbackControls({
   const sessionIdRef = useRef<string | null>(null)
 
   const [isTalking, setIsTalking] = useState(false)
+  const [microphoneEnabled, setMicrophoneEnabled] = useState(false)
+  const [managerMuted, setManagerMuted] = useState(true)
   const [isChanging, setIsChanging] = useState(false)
   const [error, setError] = useState('')
 
   const isLocalParticipantSpeaking = useIsSpeaking(room.localParticipant)
-  const isOperatorSpeaking = isTalking && isLocalParticipantSpeaking
+  const isOperatorSpeaking = microphoneEnabled && isLocalParticipantSpeaking
   const speakingParticipants = useSpeakingParticipants()
   const isOpmSpeaking = speakingParticipants.some(isOperatorManager)
 
@@ -61,19 +63,42 @@ export function OperatorTalkbackControls({
 
       const message = decodeTalkbackMessage(payload)
 
-      if (
-        message?.type !== 'talk-ended' ||
-        message.endedBy !== 'operator_manager' ||
-        message.sessionId !== sessionIdRef.current
-      ) {
+      if (!message) {
         return
       }
 
-      void room.localParticipant.setMicrophoneEnabled(false).finally(() => {
-        sessionIdRef.current = null
-        setIsTalking(false)
-        setIsChanging(false)
-      })
+      if (
+        message.type === 'operator-mute-changed' &&
+        message.roomName === roomName
+      ) {
+        setManagerMuted(message.muted)
+
+        if (message.muted) {
+          void room.localParticipant
+            .setMicrophoneEnabled(false)
+            .then(() => {
+              setMicrophoneEnabled(false)
+            })
+            .catch((error) => {
+              console.error('Unable to mute operator microphone', error)
+            })
+        }
+
+        return
+      }
+
+      if (
+        message.type === 'talk-ended' &&
+        message.endedBy === 'operator_manager' &&
+        message.sessionId === sessionIdRef.current
+      ) {
+        void room.localParticipant.setMicrophoneEnabled(false).finally(() => {
+          sessionIdRef.current = null
+          setMicrophoneEnabled(false)
+          setIsTalking(false)
+          setIsChanging(false)
+        })
+      }
     }
 
     room.on(RoomEvent.DataReceived, handleData)
@@ -81,7 +106,29 @@ export function OperatorTalkbackControls({
     return () => {
       room.off(RoomEvent.DataReceived, handleData)
     }
-  }, [room])
+  }, [room, roomName])
+
+  async function toggleMicrophone() {
+    if (isChanging || managerMuted) {
+      return
+    }
+
+    setIsChanging(true)
+    setError('')
+
+    try {
+      const nextEnabled = !microphoneEnabled
+
+      await room.localParticipant.setMicrophoneEnabled(nextEnabled)
+      setMicrophoneEnabled(nextEnabled)
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : 'Unable to change microphone',
+      )
+    } finally {
+      setIsChanging(false)
+    }
+  }
 
   async function startTalkback() {
     if (isChanging || isTalking) {
@@ -94,7 +141,10 @@ export function OperatorTalkbackControls({
     const sessionId = crypto.randomUUID()
 
     try {
-      await room.localParticipant.setMicrophoneEnabled(true)
+      if (!managerMuted) {
+        await room.localParticipant.setMicrophoneEnabled(true)
+        setMicrophoneEnabled(true)
+      }
 
       await room.localParticipant.publishData(
         encodeTalkbackMessage({
@@ -113,6 +163,7 @@ export function OperatorTalkbackControls({
       setIsTalking(true)
     } catch (error) {
       await room.localParticipant.setMicrophoneEnabled(false)
+      setMicrophoneEnabled(false)
 
       setError(
         error instanceof Error ? error.message : 'Unable to start Talkback',
@@ -150,6 +201,7 @@ export function OperatorTalkbackControls({
       }
 
       await room.localParticipant.setMicrophoneEnabled(false)
+      setMicrophoneEnabled(false)
 
       sessionIdRef.current = null
       setIsTalking(false)
@@ -190,6 +242,7 @@ export function OperatorTalkbackControls({
       }
 
       await room.localParticipant.setMicrophoneEnabled(false)
+      setMicrophoneEnabled(false)
       await room.disconnect()
     } catch (error) {
       setError(
@@ -265,6 +318,26 @@ export function OperatorTalkbackControls({
           </span>
         ) : null}
 
+        <button
+          type="button"
+          disabled={isChanging || managerMuted}
+          onClick={() => void toggleMicrophone()}
+          aria-pressed={microphoneEnabled}
+          className={
+            managerMuted
+              ? 'lk-button cursor-not-allowed opacity-50'
+              : microphoneEnabled
+                ? 'lk-button bg-red-600! text-white!'
+                : 'lk-button bg-emerald-600! text-white!'
+          }
+        >
+          {managerMuted
+            ? 'Muted by OPM'
+            : microphoneEnabled
+              ? 'Mute'
+              : 'Unmute'}
+        </button>
+
         {error ? (
           <span className="text-sm text-red-400" role="alert">
             {error}
@@ -300,10 +373,32 @@ export function OperatorTalkbackControls({
         ) : null}
 
         <p className="mt-3 text-sm text-zinc-400">
-          {isTalking
-            ? 'Your microphone is live.'
-            : 'Call the Operator Manager when assistance is required.'}
+          {managerMuted
+            ? 'Your microphone is muted by OPM.'
+            : microphoneEnabled
+              ? 'Your microphone is live.'
+              : 'You may unmute when you need to speak.'}
         </p>
+
+        <button
+          type="button"
+          disabled={isChanging || managerMuted}
+          onClick={() => void toggleMicrophone()}
+          aria-pressed={microphoneEnabled}
+          className={
+            managerMuted
+              ? 'mt-6 h-12 w-full cursor-not-allowed rounded-xl border border-white/10 font-semibold text-zinc-500'
+              : microphoneEnabled
+                ? 'mt-6 h-12 w-full rounded-xl bg-red-600 font-semibold text-white'
+                : 'mt-6 h-12 w-full rounded-xl bg-emerald-600 font-semibold text-white'
+          }
+        >
+          {managerMuted
+            ? 'Muted by OPM'
+            : microphoneEnabled
+              ? 'Mute'
+              : 'Unmute'}
+        </button>
 
         <button
           type="button"
