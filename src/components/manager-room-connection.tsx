@@ -29,7 +29,10 @@ type ManagerRoomConnectionProps = {
   token: string
   selected: boolean
   microphoneEnabled: boolean
+  operatorMuted: boolean
+  selectionDisabled: boolean
   onToggle: () => void
+  onOperatorMutedChange: (muted: boolean) => void
 }
 
 export function ManagerRoomConnection(props: ManagerRoomConnectionProps) {
@@ -50,7 +53,10 @@ function ManagerRoomCard({
   roomName,
   selected,
   microphoneEnabled,
+  operatorMuted,
+  selectionDisabled,
   onToggle,
+  onOperatorMutedChange,
 }: ManagerRoomConnectionProps) {
   const room = useRoomContext()
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null)
@@ -120,6 +126,27 @@ function ManagerRoomCard({
       room.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
     }
   }, [room])
+
+  async function changeOperatorMuted(muted: boolean) {
+    try {
+      await room.localParticipant.publishData(
+        encodeTalkbackMessage({
+          type: 'operator-mute-changed',
+          roomName,
+          muted,
+          changedAt: Date.now(),
+        }),
+        {
+          reliable: true,
+          topic: TALKBACK_TOPIC,
+        },
+      )
+
+      onOperatorMutedChange(muted)
+    } catch (error) {
+      console.error(`Unable to change mute state for ${roomName}`, error)
+    }
+  }
 
   async function endCall() {
     if (!activeCall) {
@@ -192,10 +219,28 @@ function ManagerRoomCard({
         </div>
       ) : null}
 
-      <label className="flex cursor-pointer items-center gap-3">
-        <input type="checkbox" checked={selected} onChange={onToggle} />
+      <label
+        className={
+          selectionDisabled
+            ? 'flex cursor-not-allowed items-center gap-3 opacity-70'
+            : 'flex cursor-pointer items-center gap-3'
+        }
+      >
+        <input
+          type="checkbox"
+          checked={selected}
+          disabled={selectionDisabled}
+          onChange={onToggle}
+          className="size-4 accent-violet-500"
+        />
 
         <span className="font-semibold">{roomName}</span>
+
+        {selected ? (
+          <span className="rounded-full bg-violet-500/15 px-2 py-1 text-xs font-semibold text-violet-300">
+            In call
+          </span>
+        ) : null}
       </label>
 
       <p className="mt-3 text-sm text-zinc-400">
@@ -214,15 +259,33 @@ function ManagerRoomCard({
 
       <RoomStreamGrid roomName={roomName} />
 
-      {activeCall ? (
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={endCall}
-          className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500"
+          onClick={() => void changeOperatorMuted(!operatorMuted)}
+          className={
+            operatorMuted
+              ? 'rounded-lg border border-red-400/30 bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/25'
+              : 'rounded-lg border border-emerald-400/30 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-500/25'
+          }
         >
-          End Call
+          {operatorMuted ? 'Allow operator to unmute' : 'Mute operator'}
         </button>
-      ) : null}
+
+        <span className="text-xs text-zinc-500">
+          {operatorMuted ? 'Operator muted by OPM' : 'Operator may speak'}
+        </span>
+
+        {activeCall ? (
+          <button
+            type="button"
+            onClick={endCall}
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500"
+          >
+            End Call
+          </button>
+        ) : null}
+      </div>
     </article>
   )
 }

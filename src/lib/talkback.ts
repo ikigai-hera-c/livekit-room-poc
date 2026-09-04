@@ -26,6 +26,12 @@ export type TalkbackMessage =
       endedAt: number
       endedBy: TalkEndedBy
     }
+  | {
+      type: 'operator-mute-changed'
+      roomName: string
+      muted: boolean
+      changedAt: number
+    }
 
 export function encodeTalkbackMessage(
   message: TalkbackMessage,
@@ -45,7 +51,11 @@ export function decodeTalkbackMessage(
       return null
     }
 
-    if (value.type !== 'talk-started' && value.type !== 'talk-ended') {
+    if (
+      value.type !== 'talk-started' &&
+      value.type !== 'talk-ended' &&
+      value.type !== 'operator-mute-changed'
+    ) {
       return null
     }
 
